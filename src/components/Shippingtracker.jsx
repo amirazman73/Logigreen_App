@@ -1,0 +1,271 @@
+import React, { useState, useRef } from 'react';
+import { Eye, FileText, Plus, Package, Search } from 'lucide-react';
+import Dashboard from './Dashboard';
+import LogShipmentForm from './LogShipmentForm';
+import AddItemForm from './AddItemForm';
+import PalletList from './PalletList';
+import InventoryList from './InventoryList';
+import useItems from '../hooks/useItems';
+import usePallets from '../hooks/usePallets';
+import useShipments from '../hooks/useShipments';
+import { calculateDiscrepancies } from '../utils/shipping';
+
+const ShippingTracker = () => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [newItem, setNewItem] = useState({
+    itemName: '',
+    quantity: '',
+    palletId: '',
+    quality: 'good',
+    photo: null,
+    notes: ''
+  });
+  const [newPallet, setNewPallet] = useState({
+    type: 'inventory',
+    customerId: '',
+    destination: ''
+  });
+  const [newShipment, setNewShipment] = useState({
+    shipmentCode: '',
+    shipmentDate: '',
+    expectedItems: [{ itemName: '', expectedQuantity: '' }]
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = useRef(null);
+
+  // Custom hooks for state management
+  const { items, setItems, addItem } = useItems();
+  const { pallets, setPallets, addPallet } = usePallets();
+  const { shipments, setShipments, addShipment } = useShipments();
+
+  // Add item handler
+  const handleAddItem = () => {
+    if (!newItem.itemName || !newItem.quantity || !newItem.palletId) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    addItem(newItem);
+    // Update pallet contents
+    setPallets(pallets.map(pallet =>
+      pallet.id === newItem.palletId
+        ? { ...pallet, itemCount: pallet.itemCount + parseInt(newItem.quantity) }
+        : pallet
+    ));
+    setNewItem({
+      itemName: '',
+      quantity: '',
+      palletId: '',
+      quality: 'good',
+      photo: null,
+      notes: ''
+    });
+  };
+
+  // Add pallet handler
+  const handleAddPallet = () => {
+    addPallet(newPallet);
+    setNewPallet({ type: 'inventory', customerId: '', destination: '' });
+  };
+
+  // Shipment form handlers
+  const addExpectedItem = () => {
+    setNewShipment({
+      ...newShipment,
+      expectedItems: [...newShipment.expectedItems, { itemName: '', expectedQuantity: '' }]
+    });
+  };
+  const removeExpectedItem = (index) => {
+    const updatedItems = newShipment.expectedItems.filter((_, i) => i !== index);
+    setNewShipment({ ...newShipment, expectedItems: updatedItems });
+  };
+  const updateExpectedItem = (index, field, value) => {
+    const updatedItems = newShipment.expectedItems.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    );
+    setNewShipment({ ...newShipment, expectedItems: updatedItems });
+  };
+  const handleAddShipment = () => {
+    if (!newShipment.shipmentCode || !newShipment.shipmentDate) {
+      alert('Please fill in shipment code and date');
+      return;
+    }
+    const validItems = newShipment.expectedItems.filter(item =>
+      item.itemName && item.expectedQuantity
+    );
+    if (validItems.length === 0) {
+      alert('Please add at least one item to the shipment');
+      return;
+    }
+    addShipment({
+      shipmentCode: newShipment.shipmentCode,
+      shipmentDate: newShipment.shipmentDate,
+      expectedItems: validItems
+    });
+    setNewShipment({
+      shipmentCode: '',
+      shipmentDate: '',
+      expectedItems: [{ itemName: '', expectedQuantity: '' }]
+    });
+  };
+
+  // Photo capture handler
+  const handlePhotoCapture = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setNewItem({ ...newItem, photo: e.target.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Filtered items for inventory
+  const filteredItems = items.filter(item =>
+    item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.palletId.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Dashboard stats
+  const stats = {
+    activePallets: pallets.filter(p => p.status === 'active').length,
+    qualityIssues: items.filter(i => i.quality === 'bad').length
+  };
+
+  // Discrepancies
+  const discrepancies = calculateDiscrepancies(shipments, items);
+
+  // Edit and delete handlers for pallet items
+  const onEditItem = (item) => {
+    // For now, just alert. You can replace with a modal or inline edit form.
+    alert(`Edit item: ${item.itemName} (Qty: ${item.quantity})`);
+  };
+
+  const onDeleteItem = (itemId) => {
+    setItems(items.filter(item => item.id !== itemId));
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-blue-600 text-white p-4">
+        <h1 className="text-2xl font-bold">LogiGreen Inventory Management</h1>
+      </div>
+      {/* Navigation */}
+      <div className="bg-white border-b">
+        <div className="flex overflow-x-auto">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: Eye },
+            { id: 'log-shipment', label: 'Log Shipment', icon: FileText },
+            { id: 'add-item', label: 'Add to Pallet', icon: Plus },
+            { id: 'pallets', label: 'Pallets', icon: Package },
+            { id: 'inventory', label: 'Inventory', icon: Search }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center px-6 py-3 border-b-2 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <tab.icon className="w-4 h-4 mr-2" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="p-4">
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <Dashboard stats={stats} discrepancies={discrepancies} />
+        )}
+        {/* Log Shipment Tab */}
+        {activeTab === 'log-shipment' && (
+          <LogShipmentForm
+            newShipment={newShipment}
+            setNewShipment={setNewShipment}
+            addShipment={handleAddShipment}
+            addExpectedItem={addExpectedItem}
+            removeExpectedItem={removeExpectedItem}
+            updateExpectedItem={updateExpectedItem}
+            shipments={shipments}
+          />
+        )}
+        {/* Add Item to Pallet Tab */}
+        {activeTab === 'add-item' && (
+          <AddItemForm
+            newItem={newItem}
+            setNewItem={setNewItem}
+            addItem={handleAddItem}
+            pallets={pallets}
+            fileInputRef={fileInputRef}
+            handlePhotoCapture={handlePhotoCapture}
+          />
+        )}
+        {/* Pallets Tab */}
+        {activeTab === 'pallets' && (
+          <div className="space-y-6">
+            {/* Add New Pallet */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Create New Pallet</h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <select
+                  value={newPallet.type}
+                  onChange={(e) => setNewPallet({ ...newPallet, type: e.target.value })}
+                  className="border border-gray-300 rounded-md px-3 py-2"
+                >
+                  <option value="inventory">Inventory Pallet</option>
+                  <option value="order">Order Pallet</option>
+                </select>
+                {newPallet.type === 'order' && (
+                  <input
+                    type="text"
+                    value={newPallet.customerId}
+                    onChange={(e) => setNewPallet({ ...newPallet, customerId: e.target.value })}
+                    className="border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="Customer Order ID"
+                  />
+                )}
+                <input
+                  type="text"
+                  value={newPallet.destination}
+                  onChange={(e) => setNewPallet({ ...newPallet, destination: e.target.value })}
+                  className="border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="Customer Name"
+                />
+                <button
+                  onClick={handleAddPallet}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                >
+                  Create Pallet
+                </button>
+              </div>
+            </div>
+            {/* Pallet List */}
+            <PalletList pallets={pallets} items={items} onEditItem={onEditItem} onDeleteItem={onDeleteItem} />
+          </div>
+        )}
+        {/* Inventory Tab */}
+        {activeTab === 'inventory' && (
+          <InventoryList filteredItems={filteredItems} searchQuery={searchQuery} />
+        )}
+        {/* Inventory Search Input (for inventory tab) */}
+        {activeTab === 'inventory' && (
+          <div className="mt-4">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="Search by item name or pallet ID..."
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ShippingTracker;
