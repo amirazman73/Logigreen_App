@@ -6,12 +6,17 @@ export function calculateDiscrepancies(shipments, items) {
         .reduce((sum, item) => sum + parseInt(item.quantity), 0);
       const expected = parseInt(expectedItem.expectedQuantity);
       const difference = actualQuantity - expected;
+      const quality = items
+        .filter(item => item.itemName.toLowerCase() === expectedItem.itemName.toLowerCase())
+        .map(item => item.quality)
+        .join(', ');
       return {
         itemName: expectedItem.itemName,
         expected,
         actual: actualQuantity,
         difference,
-        status: difference === 0 ? 'match' : (difference > 0 ? 'over' : 'under')
+        status: difference === 0 ? 'match' : (difference > 0 ? 'over' : 'under'),
+        quality: quality || 'unknown'
       };
     });
     return {

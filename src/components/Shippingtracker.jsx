@@ -9,6 +9,8 @@ import useItems from '../hooks/useItems';
 import usePallets from '../hooks/usePallets';
 import useShipments from '../hooks/useShipments';
 import { calculateDiscrepancies } from '../utils/shipping';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ShippingTracker = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -145,6 +147,85 @@ const ShippingTracker = () => {
     setItems(items.filter(item => item.id !== itemId));
   };
 
+  // PDF generation handler
+  const handleGeneratePDF = () => {
+    const doc = new jsPDF();
+
+    // Date
+    doc.setFontSize(22);
+    doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 20);
+
+    // Shipment Details
+    doc.setFontSize(16);
+    doc.text('Shipment Details', 14, 35);
+    doc.setFontSize(12);
+    let y = 42;
+    shipments.forEach((shipment) => {
+      doc.text(
+        `${shipment.shipmentCode} — Date: ${shipment.shipmentDate}`,
+        14,
+        y
+      );
+      y += 7;
+    });
+
+    // Arrival Summary Table
+    doc.setFontSize(16);
+    doc.text('Arrival Summary', 14, y + 10);
+
+    console.log('Discrepancy quality values:', discrepancies.flatMap(s => s.discrepancies.map(i => i.quality)));
+
+    const arrivalTable = [
+      [
+        'SNo.',
+        'Items',
+        'Planned Arrival',
+        'Actual Arrival',
+        'Quantity Check',
+        'Quality Check',
+      ],
+      ...discrepancies.flatMap((shipment, i) =>
+        shipment.discrepancies.map((item, idx) => [
+          idx + 1,
+          item.itemName,
+          item.expected,
+          item.actual,
+          item.difference,
+          item.quality === 'good' ? 'Good' : 'Bad'])
+      ),
+    ];
+
+    autoTable(doc, {
+      startY: y + 15,
+      head: [arrivalTable[0]],
+      body: arrivalTable.slice(1),
+      theme: 'grid',
+      styles: { fontSize: 10 },
+    });
+
+    // Orders Table (example, you may need to adapt this to your order data structure)
+    const orderStartY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(16);
+    doc.text('Orders', 14, orderStartY);
+
+    // Example: You may need to adapt this to your order data structure
+    const ordersTable = [
+      ['Order #1: Example', 'Planned', 'Packed', 'Check'],
+      ['Item 1', '11', '11', '✓'],
+      // ...add your real order data here
+    ];
+
+    autoTable(doc,{
+      startY: orderStartY + 5,
+      head: [ordersTable[0]],
+      body: ordersTable.slice(1),
+      theme: 'grid',
+      styles: { fontSize: 10 },
+    });
+
+    doc.save('shipment_report.pdf');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -179,7 +260,7 @@ const ShippingTracker = () => {
       <div className="p-4">
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
-          <Dashboard stats={stats} discrepancies={discrepancies} />
+          <Dashboard stats={stats} discrepancies={discrepancies} shipments={shipments} handleGeneratePDF={handleGeneratePDF} />
         )}
         {/* Log Shipment Tab */}
         {activeTab === 'log-shipment' && (

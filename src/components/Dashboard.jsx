@@ -1,8 +1,15 @@
 import React from 'react';
 import { Truck, AlertCircle, CheckCircle, FileText } from 'lucide-react';
 
-const Dashboard = ({ stats, discrepancies }) => (
+const Dashboard = ({ stats, discrepancies, shipments, handleGeneratePDF }) => (
   <div className="space-y-6">
+    {/* Generate PDF Button */}
+    <button
+      onClick={handleGeneratePDF}
+      className="mb-4 bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+    >
+      Generate PDF Report
+    </button>
     {/* Stats Cards */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="bg-white p-4 rounded-lg shadow">
