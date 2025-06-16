@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Package, ChevronDown, ChevronUp, Edit, Trash, Check, X } from 'lucide-react';
 
-// This is a new sub-component that will handle the editing form
 const EditItemRow = ({ item, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     quantity: item.quantity,
@@ -10,24 +9,18 @@ const EditItemRow = ({ item, onSave, onCancel }) => {
   });
 
   const handleSave = () => {
-    if (!formData.quantity || formData.quantity <= 0) {
-      alert("Quantity must be greater than zero.");
-      return;
-    }
     onSave(item.id, formData);
   };
 
   return (
     <div className="flex items-center justify-between py-2 bg-blue-50 p-2 rounded-lg">
-      <div className="flex-1 grid grid-cols-2 gap-3">
-        {/* Quantity Input */}
+      <div className="flex-1 grid grid-cols-2 gap-3"> {/* Changed back to grid-cols-2 */}
         <input
           type="number"
           value={formData.quantity}
           onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
           className="border border-gray-300 rounded-md px-2 py-1"
         />
-        {/* Quality Select */}
         <select
           value={formData.quality}
           onChange={(e) => setFormData({ ...formData, quality: e.target.value })}
@@ -61,10 +54,21 @@ const PalletList = ({ pallets, items, editingItemId, onEditItem, onCancelEdit, o
       <div className="divide-y">
         {pallets.map(pallet => (
           <div key={pallet.id} className="p-4">
-            <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleExpand(pallet.id)}>
-              <div className="flex items-center">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center cursor-pointer" onClick={() => toggleExpand(pallet.id)}>
                   <Package className="w-5 h-5 text-gray-500 mr-2" />
                   <span className="font-medium">{pallet.id}</span>
+                  {/* Display the pallet's storage location */}
+                  {pallet.type == 'Inventory' && (
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                        pallet.storage === 'INSIDE' 
+                        ? 'bg-cyan-100 text-cyan-800' 
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                        {pallet.storage}
+                    </span>
+                  )}
+                  
                   {expanded[pallet.id] ? <ChevronUp className="ml-2 w-4 h-4" /> : <ChevronDown className="ml-2 w-4 h-4" />}
               </div>
               <div className="text-right">

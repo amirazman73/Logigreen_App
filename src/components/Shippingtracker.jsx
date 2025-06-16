@@ -26,7 +26,8 @@ const ShippingTracker = () => {
     name : '',
     type: 'inventory',
     customerId: '',
-    destination: ''
+    destination: '',
+    storage: 'OUTSIDE'
   });
   const [newShipment, setNewShipment] = useState({
     shipmentCode: '',
@@ -49,13 +50,28 @@ const ShippingTracker = () => {
       alert('Please fill in all required fields');
       return;
     }
-    addItem(newItem);
-    // Update pallet contents
+
+    const selectedPallet = pallets.find(p => p.id === newItem.palletId);
+    if (!selectedPallet) {
+      alert('Selected pallet does not exist');
+      return;
+    }
+
+    const storageLocation = selectedPallet.type === 'inventory' ? selectedPallet.storage : 'N/A';
+
+    const itemToAdd = {
+      ...newItem,
+      storage: storageLocation,
+    };
+
+    addItem(itemToAdd);
+
     setPallets(pallets.map(pallet =>
       pallet.id === newItem.palletId
         ? { ...pallet, itemCount: pallet.itemCount + parseInt(newItem.quantity) }
         : pallet
     ));
+
     setNewItem({
       itemName: '',
       quantity: '',
@@ -208,7 +224,6 @@ const ShippingTracker = () => {
         'Planned Arrival',
         'Actual Arrival',
         'Quantity Check',
-        'Quality Check',
       ],
       ...discrepancies.flatMap((shipment, i) =>
         shipment.discrepancies.map((item, idx) => [
@@ -216,8 +231,7 @@ const ShippingTracker = () => {
           item.itemName,
           item.expected,
           item.actual,
-          item.difference,
-          item.quality === 'good' ? 'Good' : 'Bad'])
+          item.difference,])
       ),
     ];
 
@@ -228,42 +242,49 @@ const ShippingTracker = () => {
       theme: 'grid',
       styles: { fontSize: 10 },
     });
-
     
+    // --- Start of Corrected Section ---
     let palletTableStartY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(16);
     doc.text('Pallet Inventory Report', 14, palletTableStartY);
 
-    // Loop through each pallet to create a table for it.
     pallets.forEach(pallet => {
-        // Find all items that belong to the current pallet
         const palletItems = items.filter(i => i.palletId === pallet.id);
 
-        // If the pallet is empty, we can choose to skip it or show an empty state. Here we skip it.
         if (palletItems.length === 0) {
             return;
         }
 
-        // Create the body of the table from the items found
-        const tableBody = palletItems.map(item => {
-            return [item.itemName, item.quantity, item.quality];
-        });
-        
-        // Add a small gap for each new pallet table
+        let tableHead;
+        let tableBody;
+
+        // FIX 1: Use backticks (`) for the template literal
+        const palletTitle = `Pallet: ${pallet.id} (${pallet.type})` + (pallet.customerId ? ` - Order: ${pallet.customerId}` : '');
+
+        if (pallet.type === 'inventory') {
+            tableHead = [[palletTitle, 'Quantity', 'Quality', 'Storage']];
+            tableBody = palletItems.map(item => {
+                return [item.itemName, item.quantity, item.quality, item.storage || 'N/A'];
+            });
+        } else {
+            tableHead = [[palletTitle, 'Quantity', 'Quality']];
+            tableBody = palletItems.map(item => {
+                return [item.itemName, item.quantity, item.quality];
+            }); // FIX 2: Added the closing parenthesis and curly brace
+        }
+
+        // This code now runs for BOTH inventory and order pallets
         palletTableStartY = doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY + 5 : palletTableStartY + 5;
-
-        // Define the title for the pallet's table
-        const palletTitle = `Pallet: ${pallet.id} (${pallet.type})` + (pallet.customerId ? ` - Order: ${pallet.customerId}`: '');
-
-        // Use autoTable to draw the table for the current pallet
+        
         autoTable(doc, {
             startY: palletTableStartY,
-            head: [[palletTitle, 'Quantity', 'Quality']],
+            head: tableHead, // FIX 3: Use the dynamic tableHead variable
             body: tableBody,
             theme: 'grid',
-            headStyles: { fillColor: pallet.type === 'order' ? [100, 100, 200] : [60, 150, 60] } // Blue for orders, Green for inventory
+            headStyles: { fillColor: pallet.type === 'order' ? [100, 100, 200] : [60, 150, 60] }
         });
-    });
+    }); // Closes the forEach loop
+    
     doc.save('shipment_report.pdf');
   };
 
@@ -349,6 +370,17 @@ const ShippingTracker = () => {
                   <option value="inventory">Inventory Pallet</option>
                   <option value="order">Order Pallet</option>
                 </select>
+                {/* ADD THIS NEW DROPDOWN */}
+                {newPallet.type === 'inventory' && (
+                  <select
+                    value={newPallet.storage}
+                    onChange={(e) => setNewPallet({ ...newPallet, storage: e.target.value })}
+                    className="border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    <option value="OUTSIDE">Outside Fridge</option>
+                    <option value="INSIDE">Inside Fridge</option>
+                  </select>
+                )}
                 {newPallet.type === 'order' && (
                   <input
                     type="text"

@@ -9,6 +9,7 @@ const usePallets = (initialPallets = []) => {
       {
         id: newPallet.name,
         type: newPallet.type,
+        storage: newPallet.storage,
         customerID: newPallet.customerID,
         itemCount: 0,
         status: 'active',
