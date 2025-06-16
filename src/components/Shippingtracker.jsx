@@ -23,6 +23,7 @@ const ShippingTracker = () => {
     notes: ''
   });
   const [newPallet, setNewPallet] = useState({
+    name : '',
     type: 'inventory',
     customerId: '',
     destination: ''
@@ -78,8 +79,25 @@ const ShippingTracker = () => {
 
   // Add pallet handler
   const handleAddPallet = () => {
-    addPallet(newPallet);
-    setNewPallet({ type: 'inventory', customerId: '', destination: '' });
+    // 1. Validate for empty name
+    if (!newPallet.name.trim()) {
+      alert('Pallet Name cannot be empty.');
+      return;
+    }
+    // 2. Validate for unique name
+    if (pallets.some(pallet => pallet.id === newPallet.name.trim())) {
+      alert('A pallet with this name already exists. Please use a unique name.');
+      return;
+    }
+
+    // If validation passes, add the pallet
+    addPallet({
+      ...newPallet,
+      name: newPallet.name.trim() // Pass the trimmed name
+    });
+
+    // Reset the form
+    setNewPallet({ name: '', type: 'inventory', customerId: '', destination: '' });
   };
 
   // Shipment form handlers
@@ -315,6 +333,14 @@ const ShippingTracker = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4">Create New Pallet</h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* ADD THIS NEW INPUT FIELD */}
+                <input
+                  type="text"
+                  value={newPallet.name}
+                  onChange={(e) => setNewPallet({ ...newPallet, name: e.target.value })}
+                  className="border border-gray-300 rounded-md px-3 py-2 md:col-span-1"
+                  placeholder="Pallet Name (e.g., A-01)"
+                />
                 <select
                   value={newPallet.type}
                   onChange={(e) => setNewPallet({ ...newPallet, type: e.target.value })}
@@ -332,13 +358,6 @@ const ShippingTracker = () => {
                     placeholder="Customer Order ID"
                   />
                 )}
-                <input
-                  type="text"
-                  value={newPallet.destination}
-                  onChange={(e) => setNewPallet({ ...newPallet, destination: e.target.value })}
-                  className="border border-gray-300 rounded-md px-3 py-2"
-                  placeholder="Customer Name"
-                />
                 <button
                   onClick={handleAddPallet}
                   className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"

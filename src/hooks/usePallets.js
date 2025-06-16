@@ -4,12 +4,12 @@ const usePallets = (initialPallets = []) => {
   const [pallets, setPallets] = useState(initialPallets);
 
   const addPallet = (newPallet) => {
-    const palletId = `${newPallet.type === 'inventory' ? 'INV' : 'ORD'}-${Date.now()}`;
     setPallets(prevPallets => [
       ...prevPallets,
       {
-        id: palletId,
-        ...newPallet,
+        id: newPallet.name,
+        type: newPallet.type,
+        customerID: newPallet.customerID,
         itemCount: 0,
         status: 'active',
         created: new Date().toLocaleString()
