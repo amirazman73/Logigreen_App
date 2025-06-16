@@ -203,26 +203,41 @@ const ShippingTracker = () => {
       styles: { fontSize: 10 },
     });
 
-    // Orders Table (example, you may need to adapt this to your order data structure)
-    const orderStartY = doc.lastAutoTable.finalY + 10;
+    
+    let palletTableStartY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(16);
-    doc.text('Orders', 14, orderStartY);
+    doc.text('Pallet Inventory Report', 14, palletTableStartY);
 
-    // Example: You may need to adapt this to your order data structure
-    const ordersTable = [
-      ['Order #1: Example', 'Planned', 'Packed', 'Check'],
-      ['Item 1', '11', '11', '✓'],
-      // ...add your real order data here
-    ];
+    // Loop through each pallet to create a table for it.
+    pallets.forEach(pallet => {
+        // Find all items that belong to the current pallet
+        const palletItems = items.filter(i => i.palletId === pallet.id);
 
-    autoTable(doc,{
-      startY: orderStartY + 5,
-      head: [ordersTable[0]],
-      body: ordersTable.slice(1),
-      theme: 'grid',
-      styles: { fontSize: 10 },
+        // If the pallet is empty, we can choose to skip it or show an empty state. Here we skip it.
+        if (palletItems.length === 0) {
+            return;
+        }
+
+        // Create the body of the table from the items found
+        const tableBody = palletItems.map(item => {
+            return [item.itemName, item.quantity, item.quality];
+        });
+        
+        // Add a small gap for each new pallet table
+        palletTableStartY = doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY + 5 : palletTableStartY + 5;
+
+        // Define the title for the pallet's table
+        const palletTitle = `Pallet: ${pallet.id} (${pallet.type})` + (pallet.customerId ? ` - Order: ${pallet.customerId}`: '');
+
+        // Use autoTable to draw the table for the current pallet
+        autoTable(doc, {
+            startY: palletTableStartY,
+            head: [[palletTitle, 'Quantity', 'Quality']],
+            body: tableBody,
+            theme: 'grid',
+            headStyles: { fillColor: pallet.type === 'order' ? [100, 100, 200] : [60, 150, 60] } // Blue for orders, Green for inventory
+        });
     });
-
     doc.save('shipment_report.pdf');
   };
 
