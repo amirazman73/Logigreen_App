@@ -35,8 +35,10 @@ const ShippingTracker = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef(null);
 
+  const [editingItemId, setEditingItemId] = useState(null);
+
   // Custom hooks for state management
-  const { items, setItems, addItem } = useItems();
+  const { items, setItems, addItem, updateItem, removeItem } = useItems();
   const { pallets, setPallets, addPallet } = usePallets();
   const { shipments, setShipments, addShipment } = useShipments();
 
@@ -61,6 +63,17 @@ const ShippingTracker = () => {
       photo: null,
       notes: ''
     });
+  };
+
+  const handleSaveItem = (itemId, dataToSave) => {
+    updateItem(itemId, dataToSave);
+    setEditingItemId(null);
+  };
+
+  const onDeleteItem = (itemId) => {
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      removeItem(itemId);
+    }
   };
 
   // Add pallet handler
@@ -139,12 +152,7 @@ const ShippingTracker = () => {
 
   // Edit and delete handlers for pallet items
   const onEditItem = (item) => {
-    // For now, just alert. You can replace with a modal or inline edit form.
-    alert(`Edit item: ${item.itemName} (Qty: ${item.quantity})`);
-  };
-
-  const onDeleteItem = (itemId) => {
-    setItems(items.filter(item => item.id !== itemId));
+    setEditingItemId(item.id);
   };
 
   // PDF generation handler
@@ -340,7 +348,14 @@ const ShippingTracker = () => {
               </div>
             </div>
             {/* Pallet List */}
-            <PalletList pallets={pallets} items={items} onEditItem={onEditItem} onDeleteItem={onDeleteItem} />
+            <PalletList 
+              pallets={pallets} 
+              items={items} 
+              editingItemId={editingItemId}
+              onEditItem={setEditingItemId} 
+              onCancelEdit={() => setEditingItemId(null)}
+              onSaveItem={handleSaveItem}
+              onDeleteItem={onDeleteItem} />
           </div>
         )}
         {/* Inventory Tab */}

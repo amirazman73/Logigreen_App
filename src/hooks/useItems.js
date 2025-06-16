@@ -15,11 +15,25 @@ const useItems = (initialItems = []) => {
     ]);
   };
 
+  const updateItem = (id, updatedFields) => {
+    setItems(prevItems => 
+      prevItems.map(item => 
+        item.id === id ? { ...item, ...updatedFields } : item
+      )
+    );
+  }
+
+  const removeItem = (id) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== id));
+  };
+
   return {
     items,
     setItems,
-    addItem
+    addItem,
+    updateItem,
+    removeItem
   };
 };
 
-export default useItems; 
+export default useItems;
