@@ -1,4 +1,5 @@
 import React from 'react';
+import { predefinedItems } from '../data/predefined_Items';
 
 const LogShipmentForm = ({
     newShipment,
@@ -8,7 +9,12 @@ const LogShipmentForm = ({
     removeExpectedItem,
     updateExpectedItem,
     shipments
-}) => (
+}) => {
+    const availableItems = predefinedItems.filter(
+        item => item.source === newShipment.sourceLocation
+    );
+
+    return (
     <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4">Log Incoming Shipment</h2>
@@ -37,6 +43,19 @@ const LogShipmentForm = ({
             </div>
             </div>
 
+            {/* --- THIS IS THE NEW DROPDOWN --- */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Source Location *</label>
+                <select
+                    value={newShipment.sourceLocation}
+                    onChange={(e) => setNewShipment({...newShipment, sourceLocation: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                    <option value="Uganda">Uganda</option>
+                    <option value="India">India</option>
+                </select>
+            </div>
+
             <div>
             <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-gray-700">Expected Items</label>
@@ -51,13 +70,19 @@ const LogShipmentForm = ({
             <div className="space-y-3">
                 {newShipment.expectedItems.map((item, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 border border-gray-200 rounded-md">
-                    <input
-                    type="text"
-                    value={item.itemName}
-                    onChange={(e) => updateExpectedItem(index, 'itemName', e.target.value)}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Item name"
-                    />
+                    <select
+                        value={item.itemName}
+                        onChange={(e) => updateExpectedItem(index, 'itemName', e.target.value)}
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                    >
+                    <option value="">Select Item</option>
+                    {availableItems.map((availableItem, idx) => (
+                        <option key={idx} value={availableItem.name}>
+                        {availableItem.name}
+                        </option>
+                    ))}
+                    </select>
+
                     <input
                     type="number"
                     value={item.expectedQuantity}
@@ -88,5 +113,6 @@ const LogShipmentForm = ({
         </div>
     </div>
     );
+}
 
 export default LogShipmentForm;

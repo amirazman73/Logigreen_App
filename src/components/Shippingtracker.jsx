@@ -32,6 +32,7 @@ const ShippingTracker = () => {
   const [newShipment, setNewShipment] = useState({
     shipmentCode: '',
     shipmentDate: '',
+    sourceLocation: 'Uganda',
     expectedItems: [{ itemName: '', expectedQuantity: '' }]
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,11 +149,13 @@ const ShippingTracker = () => {
     addShipment({
       shipmentCode: newShipment.shipmentCode,
       shipmentDate: newShipment.shipmentDate,
+      sourceLocation: newShipment.sourceLocation,
       expectedItems: validItems
     });
     setNewShipment({
       shipmentCode: '',
       shipmentDate: '',
+      sourceLocation: 'Uganda',
       expectedItems: [{ itemName: '', expectedQuantity: '' }]
     });
   };
@@ -184,6 +187,15 @@ const ShippingTracker = () => {
   // Discrepancies
   const discrepancies = calculateDiscrepancies(shipments, items);
 
+  // 1. Get all unique item names from incoming shipments using flatMap.
+  const itemsInShipments = shipments.flatMap(s => s.expectedItems.map(i => i.itemName));
+
+  // 2. Get all unique item names from items already in inventory.
+  const itemsInInventory = items.map(i => i.itemName);
+
+  // 3. Combine them and create a unique list of names.
+  const availableItemsForPallets = [...new Set([...itemsInShipments, ...itemsInInventory])];
+
   // Edit and delete handlers for pallet items
   const onEditItem = (item) => {
     setEditingItemId(item.id);
@@ -204,7 +216,7 @@ const ShippingTracker = () => {
     let y = 42;
     shipments.forEach((shipment) => {
       doc.text(
-        `${shipment.shipmentCode} — Date: ${shipment.shipmentDate}`,
+        `${shipment.shipmentCode} from ${shipment.sourceLocation} — Date: ${shipment.shipmentDate}`,
         14,
         y
       );
@@ -345,6 +357,7 @@ const ShippingTracker = () => {
             pallets={pallets}
             fileInputRef={fileInputRef}
             handlePhotoCapture={handlePhotoCapture}
+            availableItems = {availableItemsForPallets}
           />
         )}
         {/* Pallets Tab */}

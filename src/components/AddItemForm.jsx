@@ -1,20 +1,24 @@
 import React from 'react';
 import { Camera } from 'lucide-react';
 
-const AddItemForm = ({ newItem, setNewItem, addItem, pallets, fileInputRef, handlePhotoCapture }) => (
+const AddItemForm = ({ newItem, setNewItem, addItem, pallets, fileInputRef, handlePhotoCapture, availableItems}) => (
   <div className="max-w-md mx-auto">
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4">Add Item to Pallet</h2>
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Item Name *</label>
-          <input
-            type="text"
+          <select
             value={newItem.itemName}
             onChange={(e) => setNewItem({...newItem, itemName: e.target.value})}
             className="w-full border border-gray-300 rounded-md px-3 py-2"
-            placeholder="e.g., Mango, Dudhi, etc."
-          />
+          >
+            <option value="">Select an Available Item</option>
+            {availableItems.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
