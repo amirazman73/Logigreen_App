@@ -48,12 +48,20 @@ const ShippingTracker = () => {
   const { pallets, setPallets, addPallet } = usePallets();
   const { shipments, setShipments, addShipment } = useShipments();
 
-  // Add item handler
+  const [draftItemsByPallet, setDraftItemsByPallet] = useState({});
+  const [selectedPalletId, setSelectedPalletId] = useState(null);
+
+  // This line gets the draft for the currently selected pallet, or provides a default empty row.
+  const itemsToAdd = draftItemsByPallet[selectedPalletId] || [{ itemName: '', quantity: '' }];
+
+  // Add item handler, this was the original code that was commented out
+  /*
   const handleAddItem = () => {
     if (!newItem.itemName || !newItem.quantity || !newItem.palletId) {
       alert('Please fill in all required fields');
       return;
     }
+
 
     const selectedPallet = pallets.find(p => p.id === newItem.palletId);
     if (!selectedPallet) {
@@ -84,6 +92,88 @@ const ShippingTracker = () => {
       photo: null,
       notes: ''
     });
+  };
+  */
+
+  const handleSelectPallet = (palletId) => {
+    setSelectedPalletId(palletId);
+  };
+
+  const handleItemToAddChange = (index, field, value) => {
+    // Get the current draft list for the selected pallet
+    const currentDraft = draftItemsByPallet[selectedPalletId] || [{ itemName: '', quantity: '' }];
+    
+    // Update the specific item in the draft list
+    const updatedItems = currentDraft.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    );
+    
+    // Save the updated draft list back into our main drafts state
+    setDraftItemsByPallet(prevDrafts => ({
+      ...prevDrafts,
+      [selectedPalletId]: updatedItems
+    }));
+  };
+
+  const addNewItemToAddRow = () => {
+    const currentDraft = draftItemsByPallet[selectedPalletId] || [{ itemName: '', quantity: '' }];
+    setDraftItemsByPallet(prevDrafts => ({
+      ...prevDrafts,
+      [selectedPalletId]: [...currentDraft, { itemName: '', quantity: '' }]
+    }));
+  };
+
+  const removeItemToAddRow = (index) => {
+    const currentDraft = draftItemsByPallet[selectedPalletId];
+    if (currentDraft && currentDraft.length > 1) {
+      setDraftItemsByPallet(prevDrafts => ({
+        ...prevDrafts,
+        [selectedPalletId]: currentDraft.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const handleBulkAddItems = () => {
+    if (!selectedPalletId) {
+      alert("Please select a pallet first.");
+      return;
+    }
+
+    const draftToSubmit = draftItemsByPallet[selectedPalletId] || [];
+    const validItemsToAdd = draftToSubmit.filter(item => item.itemName && item.quantity > 0);
+
+    if (validItemsToAdd.length === 0) {
+      alert("Please add at least one item with a valid quantity.");
+      return;
+    }
+
+    // Loop through the valid items and add them one by one
+    validItemsToAdd.forEach(item => {
+      const selectedPallet = pallets.find(p => p.id === selectedPalletId);
+      const storageLocation = selectedPallet.type === 'inventory' ? selectedPallet.storage : 'N/A';
+      
+      addItem({
+        itemName: item.itemName,
+        quantity: item.quantity,
+        palletId: selectedPalletId,
+        quality: 'good', 
+        notes: '',
+        storage: storageLocation,
+      });
+    });
+
+    // Notification not necessary, but can be uncommented if needed for user feedback
+    // alert(`${validItemsToAdd.length} item(s) added to pallet ${selectedPalletId}`)
+    
+    // Clear the completed draft for that pallet
+    setDraftItemsByPallet(prevDrafts => {
+      const newDrafts = { ...prevDrafts };
+      delete newDrafts[selectedPalletId];
+      return newDrafts;
+    });
+
+    // Deselect the pallet
+    setSelectedPalletId(null);
   };
 
   const handleSaveItem = (itemId, dataToSave) => {
@@ -361,13 +451,15 @@ const ShippingTracker = () => {
         {/* Add Item to Pallet Tab */}
         {activeTab === 'add-item' && (
           <AddItemForm
-            newItem={newItem}
-            setNewItem={setNewItem}
-            addItem={handleAddItem}
             pallets={pallets}
-            fileInputRef={fileInputRef}
-            handlePhotoCapture={handlePhotoCapture}
-            availableItems = {availableItemsForPallets}
+            selectedPalletId={selectedPalletId}
+            onSelectPallet={handleSelectPallet}
+            itemsToAdd={itemsToAdd}
+            onItemChange={handleItemToAddChange}
+            onAddItemRow={addNewItemToAddRow}
+            onRemoveItemRow={removeItemToAddRow}
+            onSubmit={handleBulkAddItems}
+            availableItems={availableItemsForPallets}
           />
         )}
         {/* Pallets Tab */}

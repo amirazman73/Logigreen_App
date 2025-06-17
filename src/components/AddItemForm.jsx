@@ -1,99 +1,91 @@
 import React from 'react';
-import { Camera } from 'lucide-react';
 
-const AddItemForm = ({ newItem, setNewItem, addItem, pallets, fileInputRef, handlePhotoCapture, availableItems}) => (
-  <div className="max-w-md mx-auto">
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4">Add Item to Pallet</h2>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Item Name *</label>
-          <select
-            value={newItem.itemName}
-            onChange={(e) => setNewItem({...newItem, itemName: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="">Select an Available Item</option>
-            {availableItems.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
-          <input
-            type="number"
-            value={newItem.quantity}
-            onChange={(e) => setNewItem({...newItem, quantity: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-            placeholder="0"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Pallet ID *</label>
-          <select
-            value={newItem.palletId}
-            onChange={(e) => setNewItem({...newItem, palletId: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="">Select Pallet</option>
-            {pallets.filter(p => p.status === 'active').map(pallet => (
-              <option key={pallet.id} value={pallet.id}>{pallet.id}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Quality Check</label>
-          <select
-            value={newItem.quality}
-            onChange={(e) => setNewItem({...newItem, quality: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="good">Good</option>
-            <option value="bad">Damaged/Bad</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            ref={fileInputRef}
-            onChange={handlePhotoCapture}
-            className="hidden"
-          />
+const AddItemForm = ({
+  pallets,
+  selectedPalletId,
+  onSelectPallet,
+  itemsToAdd,
+  onItemChange,
+  onAddItemRow,
+  onRemoveItemRow,
+  onSubmit,
+  availableItems
+}) => (
+  <div className="space-y-6">
+    {/* Part 1: Pallet Selection */}
+    <div className="bg-white rounded-lg shadow p-4">
+      <h2 className="text-lg font-semibold mb-3">1. Select a Pallet</h2>
+      <div className="flex overflow-x-auto space-x-3 pb-3">
+        {pallets.map(pallet => (
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-md py-4 hover:border-gray-400"
+            key={pallet.id}
+            onClick={() => onSelectPallet(pallet.id)}
+            className={`px-4 py-2 rounded-full border-2 whitespace-nowrap ${
+              selectedPalletId === pallet.id
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+            }`}
           >
-            <Camera className="w-6 h-6 text-gray-400 mr-2" />
-            <span className="text-gray-600">Take Photo</span>
+            {pallet.id} ({pallet.type})
           </button>
-          {newItem.photo && (
-            <img src={newItem.photo} alt="Item" className="mt-2 w-full h-32 object-cover rounded" />
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            value={newItem.notes}
-            onChange={(e) => setNewItem({...newItem, notes: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-            rows="2"
-            placeholder="Additional notes..."
-          />
-        </div>
-        <button
-          onClick={addItem}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium"
-        >
-          Add to Pallet
-        </button>
+        ))}
       </div>
     </div>
+
+    {/* Part 2: Item Addition (only shows after a pallet is selected) */}
+    {selectedPalletId && (
+      <div className="bg-white rounded-lg shadow p-4">
+        <h2 className="text-lg font-semibold mb-3">2. Add Items to Pallet: <span className="text-blue-600">{selectedPalletId}</span></h2>
+        
+        <div className="space-y-3 mb-4">
+          {itemsToAdd.map((item, index) => (
+            <div key={index} className="flex items-center gap-3">
+              <select
+                value={item.itemName}
+                onChange={(e) => onItemChange(index, 'itemName', e.target.value)}
+                className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="">Select an available item...</option>
+                {availableItems.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={item.quantity}
+                onChange={(e) => onItemChange(index, 'quantity', e.target.value)}
+                className="w-24 border border-gray-300 rounded-md px-3 py-2"
+                placeholder="Qty"
+              />
+              {itemsToAdd.length > 1 && (
+                <button
+                  onClick={() => onRemoveItemRow(index)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onAddItemRow}
+            className="text-blue-600 font-medium hover:text-blue-800"
+          >
+            + Add Another Item
+          </button>
+          <button
+            onClick={onSubmit}
+            className="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 font-medium"
+          >
+            Add All Items to Pallet
+          </button>
+        </div>
+      </div>
+    )}
   </div>
 );
 
-export default AddItemForm; 
+export default AddItemForm;
