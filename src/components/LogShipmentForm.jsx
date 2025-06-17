@@ -22,14 +22,31 @@ const LogShipmentForm = ({
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Shipment Code *</label>
-                <input
-                type="text"
-                value={newShipment.shipmentCode}
-                onChange={(e) => setNewShipment({...newShipment, shipmentCode: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-                placeholder="e.g., SHP-2025-001"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Shipment ID *</label>
+                <div className="flex items-center gap-2">
+                    <input
+                    type="text"
+                    value={newShipment.shipmentIdPart1}
+                    readOnly // Make the "AWB" part non-editable
+                    className="w-1/5 border border-gray-300 rounded-md px-3 py-2"
+                    />
+                    <span className="text-gray-500">-</span>
+                    <input
+                    type="text"
+                    value={newShipment.shipmentIdPart2}
+                    onChange={(e) => setNewShipment({...newShipment, shipmentIdPart2: e.target.value})}
+                    className="w-1/5 border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="XXX"
+                    />
+                    <span className="text-gray-500">-</span>
+                    <input
+                    type="text"
+                    value={newShipment.shipmentIdPart3}
+                    onChange={(e) => setNewShipment({...newShipment, shipmentIdPart3: e.target.value})}
+                    className="w-1/5 border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="XXX"
+                    />
+                </div>
             </div>
             
             <div>

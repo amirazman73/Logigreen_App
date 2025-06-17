@@ -30,7 +30,10 @@ const ShippingTracker = () => {
     storage: 'OUTSIDE'
   });
   const [newShipment, setNewShipment] = useState({
-    shipmentCode: '',
+
+    shipmentIdPart1: 'AWB',
+    shipmentIdPart2: '',
+    shipmentIdPart3: '',
     shipmentDate: '',
     sourceLocation: 'Uganda',
     expectedItems: [{ itemName: '', expectedQuantity: '' }]
@@ -134,9 +137,11 @@ const ShippingTracker = () => {
     );
     setNewShipment({ ...newShipment, expectedItems: updatedItems });
   };
+
   const handleAddShipment = () => {
-    if (!newShipment.shipmentCode || !newShipment.shipmentDate) {
-      alert('Please fill in shipment code and date');
+    // New validation for the three parts of the ID
+    if (!newShipment.shipmentIdPart1 || !newShipment.shipmentIdPart2 || !newShipment.shipmentIdPart3 || !newShipment.shipmentDate) {
+      alert('Please fill in all parts of the shipment ID and the date.');
       return;
     }
     const validItems = newShipment.expectedItems.filter(item =>
@@ -146,14 +151,19 @@ const ShippingTracker = () => {
       alert('Please add at least one item to the shipment');
       return;
     }
+
+    const combinedShipmentCode = `${newShipment.shipmentIdPart1}-${newShipment.shipmentIdPart2}-${newShipment.shipmentIdPart3}`;
+
     addShipment({
-      shipmentCode: newShipment.shipmentCode,
+      shipmentCode: combinedShipmentCode,
       shipmentDate: newShipment.shipmentDate,
       sourceLocation: newShipment.sourceLocation,
       expectedItems: validItems
     });
     setNewShipment({
-      shipmentCode: '',
+      shipmentIdPart1: 'AWB',
+      shipmentIdPart2: '',
+      shipmentIdPart3: '',
       shipmentDate: '',
       sourceLocation: 'Uganda',
       expectedItems: [{ itemName: '', expectedQuantity: '' }]
