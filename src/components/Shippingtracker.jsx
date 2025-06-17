@@ -9,6 +9,7 @@ import useItems from '../hooks/useItems';
 import usePallets from '../hooks/usePallets';
 import useShipments from '../hooks/useShipments';
 import { calculateDiscrepancies } from '../utils/shipping';
+import QualityCheck from './QualityCheck'; 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -53,6 +54,9 @@ const ShippingTracker = () => {
 
   // This line gets the draft for the currently selected pallet, or provides a default empty row.
   const itemsToAdd = draftItemsByPallet[selectedPalletId] || [{ itemName: '', quantity: '' }];
+
+  const [itemsForQualityCheck, setItemsForQualityCheck] = useState([]);
+
 
   // Add item handler, this was the original code that was commented out
   /*
@@ -134,45 +138,64 @@ const ShippingTracker = () => {
   };
 
   const handleBulkAddItems = () => {
-    if (!selectedPalletId) {
-      alert("Please select a pallet first.");
-      return;
-    }
-
+    if (!selectedPalletId) { /* ... */ return; }
     const draftToSubmit = draftItemsByPallet[selectedPalletId] || [];
     const validItemsToAdd = draftToSubmit.filter(item => item.itemName && item.quantity > 0);
+    if (validItemsToAdd.length === 0) { /* ... */ return; }
 
-    if (validItemsToAdd.length === 0) {
-      alert("Please add at least one item with a valid quantity.");
-      return;
+    // First, validate that the requested quantities do not exceed available quantities
+    for (const itemToAdd of validItemsToAdd) {
+        const qcItem = itemsForQualityCheck.find(i => i.itemName === itemToAdd.itemName);
+        if (!qcItem || parseInt(itemToAdd.quantity) > parseInt(qcItem.expectedQuantity)) {
+            alert(`Error: You are trying to add ${itemToAdd.quantity} ${itemToAdd.itemName}, but only ${qcItem?.expectedQuantity || 0} are available from the quality check list.`);
+            return; // Stop the process if validation fails
+        }
     }
 
-    // Loop through the valid items and add them one by one
-    validItemsToAdd.forEach(item => {
-      const selectedPallet = pallets.find(p => p.id === selectedPalletId);
-      const storageLocation = selectedPallet.type === 'inventory' ? selectedPallet.storage : 'N/A';
-      
-      addItem({
-        itemName: item.itemName,
-        quantity: item.quantity,
-        palletId: selectedPalletId,
-        quality: 'good', 
-        notes: '',
-        storage: storageLocation,
-      });
+    // If validation passes, add the items
+    validItemsToAdd.forEach(itemToAdd => {
+        const qualityInfo = itemsForQualityCheck.find(qcItem => qcItem.itemName === itemToAdd.itemName);
+        const quality = qualityInfo ? qualityInfo.qualityStatus : 'good';
+        
+        const selectedPallet = pallets.find(p => p.id === selectedPalletId);
+        const storageLocation = selectedPallet.type === 'inventory' ? selectedPallet.storage : 'N/A';
+
+        addItem({
+            itemName: itemToAdd.itemName,
+            quantity: itemToAdd.quantity,
+            palletId: selectedPalletId,
+            quality: quality,
+            notes: '',
+            storage: storageLocation,
+        });
     });
 
-    // Notification not necessary, but can be uncommented if needed for user feedback
-    // alert(`${validItemsToAdd.length} item(s) added to pallet ${selectedPalletId}`)
+    // Now, update the quantities in the quality check list
+    let updatedQcItems = [...itemsForQualityCheck];
+    validItemsToAdd.forEach(itemToAdd => {
+        const itemIndex = updatedQcItems.findIndex(qcItem => qcItem.itemName === itemToAdd.itemName);
+        if (itemIndex > -1) {
+            const currentItem = updatedQcItems[itemIndex];
+            const newQuantity = parseInt(currentItem.expectedQuantity) - parseInt(itemToAdd.quantity);
+            
+            // Update the item with the new quantity
+            updatedQcItems[itemIndex] = { ...currentItem, expectedQuantity: newQuantity };
+        }
+    });
+
+    // Filter out any items from the QC list where the quantity is now zero
+    setItemsForQualityCheck(updatedQcItems.filter(item => item.expectedQuantity > 0));
     
-    // Clear the completed draft for that pallet
+    // --- END: New and Corrected Logic ---
+
+    alert(`${validItemsToAdd.length} item type(s) have been added to pallet ${selectedPalletId}.`);
+    
+    // Reset the form
     setDraftItemsByPallet(prevDrafts => {
       const newDrafts = { ...prevDrafts };
       delete newDrafts[selectedPalletId];
       return newDrafts;
     });
-
-    // Deselect the pallet
     setSelectedPalletId(null);
   };
 
@@ -229,27 +252,33 @@ const ShippingTracker = () => {
   };
 
   const handleAddShipment = () => {
-    // New validation for the three parts of the ID
     if (!newShipment.shipmentIdPart1 || !newShipment.shipmentIdPart2 || !newShipment.shipmentIdPart3 || !newShipment.shipmentDate) {
       alert('Please fill in all parts of the shipment ID and the date.');
       return;
     }
-    const validItems = newShipment.expectedItems.filter(item =>
-      item.itemName && item.expectedQuantity
-    );
+    const validItems = newShipment.expectedItems.filter(item => item.itemName && item.expectedQuantity);
     if (validItems.length === 0) {
       alert('Please add at least one item to the shipment');
       return;
     }
-
     const combinedShipmentCode = `${newShipment.shipmentIdPart1}-${newShipment.shipmentIdPart2}-${newShipment.shipmentIdPart3}`;
-
     addShipment({
       shipmentCode: combinedShipmentCode,
       shipmentDate: newShipment.shipmentDate,
       sourceLocation: newShipment.sourceLocation,
       expectedItems: validItems
     });
+
+    const qualityCheckItems = validItems.flatMap(item => ({
+      id: `${combinedShipmentCode}-${item.itemName}`,
+      itemName: item.itemName,
+      shipmentId: combinedShipmentCode,
+      expectedQuantity: item.expectedQuantity,
+      qualityStatus: 'pending',
+      imageUrl: null,
+    }));
+    setItemsForQualityCheck(prev => [...prev, ...qualityCheckItems]);
+
     setNewShipment({
       shipmentIdPart1: 'AWB',
       shipmentIdPart2: '',
@@ -259,6 +288,28 @@ const ShippingTracker = () => {
       expectedItems: [{ itemName: '', expectedQuantity: '' }]
     });
   };
+
+  // DEFINED: The missing handleSetQualityStatus function
+  const handleSetQualityStatus = (itemId, status) => {
+    setItemsForQualityCheck(itemsForQualityCheck.map(item =>
+      item.id === itemId ? { ...item, qualityStatus: status } : item
+    ));
+  };
+  
+  const handleQualityCheckImageUpload = (itemId, event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target.result;
+        setItemsForQualityCheck(itemsForQualityCheck.map(item =>
+          item.id === itemId ? { ...item, imageUrl } : item
+        ));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
 
   // Photo capture handler
   const handlePhotoCapture = (event) => {
@@ -294,7 +345,15 @@ const ShippingTracker = () => {
   const itemsInInventory = items.map(i => i.itemName);
 
   // 3. Combine them and create a unique list of names.
-  const availableItemsForPallets = [...new Set([...itemsInShipments, ...itemsInInventory])];
+  const availableItemsForPallets = [
+    ...new Set(
+      itemsForQualityCheck
+        .filter(item => item.qualityStatus !== 'pending' && item.expectedQuantity > 0)
+        .map(item => item.itemName)
+    )
+  ];
+
+
 
   // Edit and delete handlers for pallet items
   const onEditItem = (item) => {
@@ -304,61 +363,72 @@ const ShippingTracker = () => {
   // PDF generation handler
   const handleGeneratePDF = () => {
     const doc = new jsPDF();
+    let yPos = 20; // A single variable to track the vertical position
 
     // Date
     doc.setFontSize(22);
-    doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 20);
+    doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 14, yPos);
+    yPos += 15;
 
     // Shipment Details
     doc.setFontSize(16);
-    doc.text('Shipment Details', 14, 35);
+    doc.text('Shipment Details', 14, yPos);
+    yPos += 7;
     doc.setFontSize(12);
-    let y = 42;
     shipments.forEach((shipment) => {
       doc.text(
         `${shipment.shipmentCode} from ${shipment.sourceLocation} — Date: ${shipment.shipmentDate}`,
         14,
-        y
+        yPos
       );
-      y += 7;
+      yPos += 7;
     });
 
-    // Arrival Summary Table
+    // --- START: New and Corrected "Arrival Summary" Section ---
+    yPos += 10;
     doc.setFontSize(16);
-    doc.text('Arrival Summary', 14, y + 10);
+    doc.text('Arrival Summary', 14, yPos);
+    yPos += 2;
 
-    console.log('Discrepancy quality values:', discrepancies.flatMap(s => s.discrepancies.map(i => i.quality)));
+    // Loop through each shipment's discrepancy report
+    discrepancies.forEach(shipmentReport => {
+        if (shipmentReport.discrepancies.length === 0) return;
 
-    const arrivalTable = [
-      [
-        'SNo.',
-        'Items',
-        'Planned Arrival',
-        'Actual Arrival',
-        'Quantity Check',
-      ],
-      ...discrepancies.flatMap((shipment, i) =>
-        shipment.discrepancies.map((item, idx) => [
-          idx + 1,
-          item.itemName,
-          item.expected,
-          item.actual,
-          item.difference,])
-      ),
-    ];
+        yPos += 5; // Add space before each new table
 
-    autoTable(doc, {
-      startY: y + 15,
-      head: [arrivalTable[0]],
-      body: arrivalTable.slice(1),
-      theme: 'grid',
-      styles: { fontSize: 10 },
+        // Create the table body for this specific shipment
+        const tableBody = shipmentReport.discrepancies.map((item, idx) => [
+            idx + 1,
+            item.itemName,
+            item.expected,
+            item.actual,
+            item.difference > 0 ? `+${item.difference}` : item.difference,
+            !item.quality.includes('bad') ? 'good' : 'bad' // The robust quality check
+        ]);
+        
+        // Use autoTable to draw a separate table for each shipment
+        autoTable(doc, {
+            startY: yPos,
+            // Use the shipment code as a title in the header
+            head: [
+                [{ content: `Shipment: ${shipmentReport.shipmentCode}`, colSpan: 6, styles: { fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 } }],
+                ['SNo.', 'Items', 'Planned', 'Actual', 'Difference', 'Quality Check']
+            ],
+            body: tableBody,
+            theme: 'grid',
+            styles: { fontSize: 10 },
+        });
+
+        // Update the yPos to be below the table we just drew
+        yPos = doc.lastAutoTable.finalY;
     });
-    
-    // --- Start of Corrected Section ---
+    // --- END: New "Arrival Summary" Section ---
+
+    // Pallet Inventory Report section
     let palletTableStartY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(16);
     doc.text('Pallet Inventory Report', 14, palletTableStartY);
+
 
     pallets.forEach(pallet => {
         const palletItems = items.filter(i => i.palletId === pallet.id);
@@ -412,6 +482,7 @@ const ShippingTracker = () => {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: Eye },
             { id: 'log-shipment', label: 'Log Shipment', icon: FileText },
+            { id: 'quality-check', label: 'Quality Check', icon: Search },
             { id: 'add-item', label: 'Add to Pallet', icon: Plus },
             { id: 'pallets', label: 'Pallets', icon: Package },
             { id: 'inventory', label: 'Inventory', icon: Search }
@@ -446,6 +517,14 @@ const ShippingTracker = () => {
             removeExpectedItem={removeExpectedItem}
             updateExpectedItem={updateExpectedItem}
             shipments={shipments}
+          />
+        )}
+        {/* Quality Check Tab */}
+        {activeTab === 'quality-check' && (
+          <QualityCheck 
+            itemsForQualityCheck={itemsForQualityCheck}
+            onSetStatus={handleSetQualityStatus}
+            onImageUpload={handleQualityCheckImageUpload}
           />
         )}
         {/* Add Item to Pallet Tab */}
