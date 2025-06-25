@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.css": "/Logigreen_App/static/css/main.9414c1f0.css",
+    "main.js": "/Logigreen_App/static/js/main.c421f561.js",
+    "static/js/239.5941058a.chunk.js": "/Logigreen_App/static/js/239.5941058a.chunk.js",
+    "static/js/977.015104e3.chunk.js": "/Logigreen_App/static/js/977.015104e3.chunk.js",
+    "static/js/455.467d15d3.chunk.js": "/Logigreen_App/static/js/455.467d15d3.chunk.js",
+    "index.html": "/Logigreen_App/index.html",
+    "main.9414c1f0.css.map": "/Logigreen_App/static/css/main.9414c1f0.css.map",
+    "main.c421f561.js.map": "/Logigreen_App/static/js/main.c421f561.js.map",
+    "239.5941058a.chunk.js.map": "/Logigreen_App/static/js/239.5941058a.chunk.js.map",
+    "977.015104e3.chunk.js.map": "/Logigreen_App/static/js/977.015104e3.chunk.js.map",
+    "455.467d15d3.chunk.js.map": "/Logigreen_App/static/js/455.467d15d3.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.9414c1f0.css",
+    "static/js/main.c421f561.js"
+  ]
+}
